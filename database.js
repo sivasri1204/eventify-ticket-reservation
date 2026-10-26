@@ -196,8 +196,8 @@ async function seedDemoData() {
   const eventsData = [
     {
       organizer_id: userOrg1.lastID,
-      title: 'Global AI & Cloud Innovation Summit 2026',
-      description: 'Join industry pioneers, deep-learning researchers, and enterprise cloud architects for 2 days of keynotes, tech demos, and hands-on workshops on the future of generative AI and edge computing.',
+      title: 'National Cloud & Technology Summit 2026',
+      description: 'Join engineers, software developers, and cloud architects for two days of technical talks, system design sessions, and hands-on workshops on distributed systems, DevOps, and scalable web engineering.',
       category: 'Tech',
       date: '2026-11-14',
       time: '09:00 AM',

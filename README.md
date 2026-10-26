@@ -1,182 +1,224 @@
-# 🎟️ Eventify – Multi-Tenant Event & Ticket Reservation System
+# Eventify - Multi-Tenant Event and Ticket Reservation System
 
-> **Web Technology Mini Project**  
-> A complete, responsive, full-stack event ticketing platform with multi-tenant role-based access, dual ticket tiers, atomic seat reservation, 10-minute fair seat hold, and Indian Rupee (₹) mock payment gateway simulation (UPI & RuPay).
-
----
-
-## 📋 Table of Contents
-1. [Project Overview](#-project-overview)
-2. [Key Features](#-key-features)
-3. [Technology Stack](#-technology-stack)
-4. [System Architecture](#-system-architecture)
-5. [Database Schema](#-database-schema)
-6. [Demo Accounts](#-demo-accounts)
-7. [Installation & Local Setup](#-installation--local-setup)
-8. [🌐 How to Deploy for Free & Add Live Link to GitHub](#-how-to-deploy-for-free--add-live-link-to-github)
-9. [REST API Documentation](#-rest-api-documentation)
-10. [Viva & Project Demonstration Guide](#-viva--project-demonstration-guide)
+A Web Technology mini project developed using Node.js, Express.js, SQLite, and vanilla HTML, CSS, and JavaScript.
 
 ---
 
-## 🌟 Project Overview
+## 1. Project Overview
 
-**Eventify** is a Web Technology mini project designed to model real-world event ticketing ecosystems (like BookMyShow, Eventbrite, and Ticketmaster). It solves real-world challenges in event reservations:
-- **Fair Temporary Holds:** When a user enters checkout, their seats are held for **10 minutes** so others cannot book them, preventing cart abandonment deadlocks.
-- **Race Condition Prevention:** Utilizes atomic **SQLite transactions** (`BEGIN TRANSACTION`, `COMMIT`, `ROLLBACK`) with guard conditions (`available_seats >= quantity`) to prevent overselling when multiple attendees book simultaneously.
-- **Multi-Tenant Separation:** Organizers manage only their hosted events and track gross revenue (₹); Admins have platform-wide governance; Attendees browse, book, and view digital passes.
-- **Dual Ticket Tiers:** Support for General Admission (GA) and VIP Access with distinct Indian Rupee (₹) pricing, perk descriptions, and seat limits.
-- **Indian Payment Methods:** Simulated checkout supporting **UPI (Google Pay, PhonePe, Paytm)** and **RuPay / Debit Cards**.
+Eventify is a web-based event discovery and ticket reservation system designed to simulate real-world ticketing platforms such as BookMyShow and Eventbrite. The application is built with a multi-tenant role-based access model, allowing multiple organizers to publish and manage events while attendees can browse, reserve seats, and complete mock payments.
 
----
+The project addresses two critical challenges in web-based reservation systems:
+1. **Preventing Overselling:** Utilizing atomic database transactions with conditional updates so two users cannot book the last available seat simultaneously.
+2. **Fair Ticket Holds:** Temporarily reserving selected seats for 10 minutes during the checkout phase so tickets are not taken while an attendee is entering payment details.
 
-## ✨ Key Features
-
-### 1. Attendee Features
-- **Browse & Filter:** Search events by title, keywords, or Indian venue; filter by categories (*Tech, Music, Workshop, Sports, Comedy, Networking*).
-- **Seat Availability:** Real-time seat counters showing *"Selling Fast"*, *"X seats remaining"*, or *"Sold Out"*.
-- **10-Minute Fair Hold:** Seat reservation lock while in checkout with an animated countdown timer.
-- **Indian Payment Gateway Simulation (₹):**
-  - Simulated **UPI ID** input (`user@okhdfcbank`, `user@upi`) and **RuPay/Debit Cards**.
-  - 🟢 **Simulate Success:** Atomically deducts inventory, generates confirmation code (`EVT-XXXXXX`) and transaction reference.
-  - 🔴 **Simulate Failure:** Gracefully simulates bank decline/insufficient funds, preserves the 10-minute hold, and allows retry.
-- **Digital Pass & Printing:** Access booked tickets with simulated QR codes, barcodes, and print-ready CSS layout.
-- **Booking Cancellation:** Attendees can cancel bookings, automatically returning seats to the inventory pool.
-
-### 2. Organizer Features
-- **Dedicated Hub:** Real-time metrics: Active Events, Tickets Sold, Total Reservations, Gross Revenue in INR (₹).
-- **Event Lifecycle (CRUD):** Create new events with customizable GA and VIP pricing (₹), edit dates/venues, and delete events.
-- **Attendee Roster:** View attendee names, emails, tier purchased, and transaction timestamps for hosted events.
-
-### 3. Administrator Features
-- **Platform Overview:** Total registered users (breakdown by role), platform-wide events, total reservations, and platform gross sales (₹).
-- **User Governance:** View all registered accounts and delete test/inactive users.
-- **Event Audit:** Monitor and moderate events across all organizers.
+All ticket pricing, transactions, and revenue tracking are implemented in Indian Rupees (INR, Rs. / INR symbol).
 
 ---
 
-## 🛠️ Technology Stack
+## 2. Technology Stack
 
-| Layer | Technology | Purpose |
-|---|---|---|
-| **Frontend** | HTML5, CSS3, Vanilla JavaScript (ES6+) | Single-Page Application (SPA) architecture, responsive dark theme with purple accents, zero build tools needed. |
-| **Backend** | Node.js & Express.js | Lightweight REST API server with modular routing, JWT authentication, and transaction handling. |
-| **Database** | SQLite3 (`eventify.db`) | Serverless, zero-configuration relational database with foreign key cascades and transactions. |
-| **Security** | `bcryptjs` & `jsonwebtoken` | Pure JavaScript password hashing (salt rounds: 10) and bearer token authentication. |
+### Frontend
+- **HTML5:** Semantic document structure for event catalogs, dashboards, and booking modals.
+- **CSS3:** Custom responsive layout, dark theme styling with violet accents, CSS grid and flexbox, print-specific stylesheet (`@media print`) for digital ticket generation. No heavy UI framework used.
+- **JavaScript (ES6):** Client-side routing, DOM updates, countdown timer implementation, and asynchronous fetch requests to backend APIs.
+
+### Backend
+- **Node.js:** Server-side runtime environment.
+- **Express.js:** Lightweight web application framework handling routing, static file serving, and middleware processing.
+- **SQLite3:** Serverless, file-based relational database (`eventify.db`) executing parameterized SQL queries.
+
+### Authentication and Security
+- **bcryptjs:** Salted password hashing (10 salt rounds) before storing credentials in the database.
+- **jsonwebtoken (JWT):** Token-based session authentication passed via the HTTP Authorization header (`Bearer <token>`).
 
 ---
 
-## 🏗️ System Architecture
+## 3. System Architecture and Workflow
 
-```mermaid
-flowchart TD
-    subgraph Client["Frontend (Browser)"]
-        UI["SPA Interface (HTML5 / CSS3 / Vanilla JS)"]
-        State["State Manager (localStorage JWT, 10-Min Hold)"]
-    end
-
-    subgraph Server["Express Backend (Node.js)"]
-        AuthMiddleware["JWT Auth Middleware & Role Guard"]
-        API["REST API Endpoints (/api/events, /api/bookings, /api/organizer, /api/admin)"]
-        HoldEngine["10-Min Temporary Hold Engine"]
-        TxEngine["Atomic Transaction Engine"]
-    end
-
-    subgraph Database["SQLite Database (eventify.db)"]
-        U[(users)]
-        E[(events)]
-        T[(ticket_types)]
-        B[(bookings)]
-        H[(ticket_holds)]
-    end
-
-    UI <-->|Fetch / JSON (₹ INR)| API
-    API --> AuthMiddleware
-    AuthMiddleware --> HoldEngine
-    HoldEngine --> TxEngine
-    TxEngine --> Database
+```
+[ Browser Client ]
+  |-- Single Page Application (HTML / CSS / JavaScript)
+  |-- Local Token & Session State
+         |
+         | HTTP REST Requests (JSON)
+         v
+[ Express Server ]
+  |-- JWT Authentication Middleware
+  |-- Role-Based Route Guards (Admin / Organizer / Attendee)
+  |-- 10-Minute Seat Hold Scheduler
+  |-- SQLite Transaction Controller
+         |
+         | Parameterized SQL Queries
+         v
+[ SQLite Database: eventify.db ]
+  |-- users
+  |-- events
+  |-- ticket_types
+  |-- ticket_holds
+  |-- bookings
 ```
 
 ---
 
-## 🗄️ Database Schema
+## 4. Key Modules and User Roles
 
-The database is automatically created and seeded with 6 Indian events on initial start.
+The system enforces role-based access control across three user roles:
 
-### 1. `users`
-- `id` (INTEGER PRIMARY KEY AUTOINCREMENT)
-- `name` (TEXT)
-- `email` (TEXT UNIQUE)
-- `password_hash` (TEXT)
-- `role` (TEXT: `'admin'`, `'organizer'`, `'attendee'`)
-- `created_at` (DATETIME)
+### Attendee Module
+- Browse published events by category (Tech, Music, Workshop, Sports, Comedy, Networking).
+- Search events in real time by title, description, or city.
+- Select ticket tiers (General Admission vs. VIP) and choose quantities up to 10 tickets per order.
+- Initiate a 10-minute temporary seat hold with a live countdown display.
+- Complete checkout using a simulated Indian payment interface (UPI ID or RuPay/Debit card).
+- Test payment success and simulated payment decline scenarios.
+- View booking history, cancel orders (which restores seats to the pool), and view/print digital boarding passes.
 
-### 2. `events`
-- `id` (INTEGER PRIMARY KEY AUTOINCREMENT)
-- `organizer_id` (INTEGER -> users.id)
-- `title` (TEXT)
-- `description` (TEXT)
-- `category` (TEXT)
-- `date` (TEXT)
-- `time` (TEXT)
-- `venue` (TEXT)
-- `image_url` (TEXT)
-- `created_at` (DATETIME)
+### Organizer Module
+- Dedicated dashboard showing only the events published by that specific organizer.
+- Summary metrics: Active Events Count, Total Tickets Sold, Total Bookings, and Gross Revenue (INR).
+- Complete CRUD operations: Create new events, edit dates/venues/pricing, and delete events.
+- Real-time attendee roster showing booking codes, attendee names, emails, and transaction amounts.
 
-### 3. `ticket_types`
-- `id` (INTEGER PRIMARY KEY AUTOINCREMENT)
-- `event_id` (INTEGER -> events.id)
-- `name` (TEXT: `'General Admission'`, `'VIP Access'`)
-- `price` (REAL: in INR ₹)
-- `total_seats` (INTEGER)
-- `available_seats` (INTEGER)
-- `perks` (TEXT)
-
-### 4. `ticket_holds` (10-Minute Fair Hold)
-- `id` (INTEGER PRIMARY KEY AUTOINCREMENT)
-- `hold_token` (TEXT UNIQUE)
-- `ticket_type_id` (INTEGER -> ticket_types.id)
-- `user_id` (INTEGER -> users.id)
-- `quantity` (INTEGER)
-- `expires_at` (INTEGER epoch timestamp)
-- `status` (TEXT: `'active'`, `'released'`, `'converted'`)
-
-### 5. `bookings`
-- `id` (INTEGER PRIMARY KEY AUTOINCREMENT)
-- `booking_code` (TEXT UNIQUE: e.g. `EVT-621944`)
-- `user_id` (INTEGER -> users.id)
-- `event_id` (INTEGER -> events.id)
-- `ticket_type_id` (INTEGER -> ticket_types.id)
-- `quantity` (INTEGER)
-- `unit_price` (REAL: in ₹)
-- `total_price` (REAL: in ₹)
-- `attendee_name` (TEXT)
-- `attendee_email` (TEXT)
-- `payment_status` (TEXT: `'completed'`)
-- `payment_reference` (TEXT)
-- `created_at` (DATETIME)
+### Administrator Module
+- Platform-wide overview showing total registered users, total events, tickets reserved, and platform gross revenue.
+- User management table with the ability to delete user accounts.
+- Event moderation table allowing administrators to audit and remove any event across the platform.
 
 ---
 
-## 🔑 Demo Accounts
+## 5. Technical Highlights and Implementation Details
 
-The project includes pre-seeded demo accounts. In addition, the login modal has **1-Click Demo Sign-In Buttons** for quick viva presentation:
+### Concurrency and Race Condition Prevention
+To prevent overselling when multiple users attempt to reserve the same seats simultaneously, the checkout process executes within an atomic SQLite transaction:
 
-| Role | Email | Password | What You Can Test |
+```sql
+BEGIN TRANSACTION;
+UPDATE ticket_types 
+SET available_seats = available_seats - ? 
+WHERE id = ? AND available_seats >= ?;
+-- If changes == 0, ROLLBACK is issued; otherwise COMMIT
+```
+
+If the remaining seats are fewer than the requested quantity, the query affects 0 rows, prompting the server to roll back the transaction and return an HTTP 400 error.
+
+### 10-Minute Fair Hold Engine
+When an attendee clicks "Reserve & Proceed to Payment":
+1. A temporary hold record is inserted into `ticket_holds` with `expires_at = Date.now() + 600000` (10 minutes).
+2. Available seats are evaluated as `total_available - active_unexpired_holds`.
+3. A client-side countdown timer displays remaining minutes and seconds.
+4. If payment is completed within the window, the hold status converts to confirmed. If the timer reaches zero, the hold expires automatically.
+
+### Indian Payment Gateway Simulation
+The checkout modal includes simulated payment methods commonly used in India:
+- **UPI Option:** Virtual Payment Address (VPA) input supporting handles like `name@okhdfcbank`, `name@upi`.
+- **Card Option:** Simulated RuPay/Visa debit card input fields.
+- **Dual Outcome Testing:**
+  - **Simulate Success:** Records the booking, deducts inventory, generates an `EVT-` booking code, and issues a printable ticket pass.
+  - **Simulate Failure:** Returns an HTTP 402 error simulating a bank decline, keeping the seat hold intact for immediate retry.
+
+---
+
+## 6. Database Schema
+
+The database consists of 5 normalized relational tables:
+
+### users
+| Column | Type | Constraints | Description |
 |---|---|---|---|
-| **Attendee** | `alex.attendee@gmail.com` | `attendee123` | Browse events, hold seats, simulate UPI/Card payment, view & print digital ticket passes. |
-| **Organizer** | `sarah@nexusevents.com` | `organizer123` | View sales analytics, gross revenue (₹), create new events, edit/delete hosted events, inspect attendees. |
-| **Admin** | `admin@eventify.com` | `admin123` | Platform oversight, user table management, system-wide event moderation. |
+| id | INTEGER | PRIMARY KEY AUTOINCREMENT | Unique user identifier |
+| name | TEXT | NOT NULL | User full name |
+| email | TEXT | UNIQUE, NOT NULL | Login email address |
+| password_hash | TEXT | NOT NULL | bcrypt hash of password |
+| role | TEXT | CHECK IN ('admin', 'organizer', 'attendee') | User permission level |
+| created_at | DATETIME | DEFAULT CURRENT_TIMESTAMP | Account creation date |
+
+### events
+| Column | Type | Constraints | Description |
+|---|---|---|---|
+| id | INTEGER | PRIMARY KEY AUTOINCREMENT | Unique event identifier |
+| organizer_id | INTEGER | FOREIGN KEY -> users(id) ON DELETE CASCADE | Event creator |
+| title | TEXT | NOT NULL | Event headline |
+| description | TEXT | NOT NULL | Full event description |
+| category | TEXT | NOT NULL | Event classification |
+| date | TEXT | NOT NULL | Event date (YYYY-MM-DD) |
+| time | TEXT | NOT NULL | Event start time |
+| venue | TEXT | NOT NULL | Location or auditorium |
+| image_url | TEXT | | Banner image link |
+| created_at | DATETIME | DEFAULT CURRENT_TIMESTAMP | Record timestamp |
+
+### ticket_types
+| Column | Type | Constraints | Description |
+|---|---|---|---|
+| id | INTEGER | PRIMARY KEY AUTOINCREMENT | Unique tier identifier |
+| event_id | INTEGER | FOREIGN KEY -> events(id) ON DELETE CASCADE | Associated event |
+| name | TEXT | NOT NULL | 'General Admission' or 'VIP Access' |
+| price | REAL | NOT NULL | Price in INR |
+| total_seats | INTEGER | NOT NULL | Initial seat capacity |
+| available_seats | INTEGER | NOT NULL | Remaining seats |
+| perks | TEXT | | Perks included with ticket |
+
+### ticket_holds
+| Column | Type | Constraints | Description |
+|---|---|---|---|
+| id | INTEGER | PRIMARY KEY AUTOINCREMENT | Hold record identifier |
+| hold_token | TEXT | UNIQUE, NOT NULL | Random token string |
+| ticket_type_id | INTEGER | FOREIGN KEY -> ticket_types(id) | Held ticket tier |
+| user_id | INTEGER | FOREIGN KEY -> users(id) | User holding seats |
+| quantity | INTEGER | NOT NULL | Number of held seats |
+| expires_at | INTEGER | NOT NULL | Epoch timestamp (ms) |
+| status | TEXT | DEFAULT 'active' | 'active', 'released', 'converted' |
+
+### bookings
+| Column | Type | Constraints | Description |
+|---|---|---|---|
+| id | INTEGER | PRIMARY KEY AUTOINCREMENT | Booking identifier |
+| booking_code | TEXT | UNIQUE, NOT NULL | Reference code (e.g., EVT-123456) |
+| user_id | INTEGER | FOREIGN KEY -> users(id) | Booking attendee |
+| event_id | INTEGER | FOREIGN KEY -> events(id) | Booked event |
+| ticket_type_id | INTEGER | FOREIGN KEY -> ticket_types(id) | Selected tier |
+| quantity | INTEGER | NOT NULL | Number of tickets |
+| unit_price | REAL | NOT NULL | Price per ticket |
+| total_price | REAL | NOT NULL | Total amount paid |
+| attendee_name | TEXT | NOT NULL | Primary ticket holder |
+| attendee_email | TEXT | NOT NULL | Delivery email address |
+| payment_status | TEXT | DEFAULT 'completed' | Payment status |
+| payment_reference | TEXT | | Transaction identifier |
+| created_at | DATETIME | DEFAULT CURRENT_TIMESTAMP | Booking timestamp |
 
 ---
 
-## 🚀 Installation & Local Setup
+## 7. Project File Structure
+
+```
+eventify/
+|-- public/
+|   |-- index.html         # Application markup and modals
+|   |-- style.css          # Styling, dark theme, and print styles
+|   |-- script.js          # Client controller, API fetch calls, countdown timer
+|-- index.html             # Root copy for GitHub Pages deployment
+|-- style.css              # Root stylesheet for GitHub Pages
+|-- script.js              # Root script with static mode fallback
+|-- server.js              # Express REST server, routes, and middleware
+|-- database.js            # SQLite database schema, connections, seed data
+|-- test-server.js         # Integration test suite for backend verification
+|-- reset-db.js            # Utility script to reset and re-seed database
+|-- render.yaml            # Render deployment blueprint
+|-- package.json           # Node.js dependencies and run scripts
+|-- .env.example           # Environment variable template
+|-- .gitignore             # Ignored files (node_modules, logs)
+|-- README.md              # Project documentation
+```
+
+---
+
+## 8. How to Run Locally
 
 ### Prerequisites
-- Node.js (v18, v20, v22, or v24+)
-- npm
+- Node.js (version 18 or above)
+- npm (Node Package Manager)
 
-### Step 1: Open Terminal in Project Directory
+### Step 1: Clone or Open Project Directory
 ```bash
 cd eventify
 ```
@@ -186,11 +228,11 @@ cd eventify
 npm install
 ```
 
-### Step 3: Run the Server
+### Step 3: Start the Application
 ```bash
 npm start
 ```
-*For live auto-reloading during development:*
+For automatic restart during development:
 ```bash
 npm run dev
 ```
@@ -201,154 +243,79 @@ Open your browser and navigate to:
 http://localhost:3000
 ```
 
-### Step 5: Run Automated Integration Tests
-Verify database integrity, password hashing, 10-minute hold, and INR checkout:
+### Step 5: Run Automated Tests
 ```bash
 npm test
 ```
 
 ---
 
-## 🌐 How to Deploy for Free & Add Live Link to GitHub
+## 9. Deployment Links
 
-You can host **Eventify** online 100% free on **Render** (or Railway) so that anyone can open your live website from your GitHub repository link.
-
-### Part A: Upload Project to GitHub
-
-#### Option 1: Using the GitHub Website (No Git installation needed)
-1. Go to [github.com](https://github.com) and log in.
-2. Click the **"+"** icon in the top-right corner and select **"New repository"**.
-3. Name your repository (e.g., `eventify-event-reservation`) and set it to **Public**.
-4. Click **"Create repository"**.
-5. On the next screen, click **"uploading an existing file"**.
-6. Drag and drop all the project files (`server.js`, `database.js`, `package.json`, `render.yaml`, `README.md`, `.env.example`, `.gitignore`, and the entire `public/` folder).  
-   *(Do NOT upload `node_modules` or `eventify.db`)*
-7. Click **"Commit changes"**.
-
-#### Option 2: Using Git Terminal
-```bash
-git init
-git add .
-git commit -m "Initial commit of Eventify project"
-git branch -M main
-git remote add origin https://github.com/YOUR_USERNAME/YOUR_REPOSITORY.git
-git push -u origin main
-```
+- **GitHub Repository:** https://github.com/sivasri1204/eventify-ticket-reservation
+- **Live Website (GitHub Pages):** https://sivasri1204.github.io/eventify-ticket-reservation/
 
 ---
 
-### Part B: Deploy to Render (Free Cloud Hosting)
+## 10. Default Demo Accounts
 
-1. Sign up / Log in to [render.com](https://render.com) using your GitHub account.
-2. Click **"New +"** in the top right and select **"Web Service"**.
-3. Select your GitHub repository (`eventify-event-reservation`) and click **"Connect"**.
-4. Render will automatically detect the included `render.yaml` configuration:
-   - **Name:** `eventify`
-   - **Runtime:** `Node`
-   - **Build Command:** `npm install`
-   - **Start Command:** `npm start`
-   - **Instance Type:** `Free`
-5. Click **"Deploy Web Service"**.
-6. Render will install dependencies and start your server in ~1-2 minutes.
-7. Once live, Render displays your public URL at the top:
-   ```text
-   https://eventify-xxxx.onrender.com
-   ```
+The database comes pre-seeded with accounts for testing all three roles. The Sign In modal also includes one-click buttons for rapid evaluation:
+
+| Role | Email | Password | Access Level |
+|---|---|---|---|
+| Attendee | alex.attendee@gmail.com | attendee123 | Browse, hold seats, pay, download passes |
+| Organizer | sarah@nexusevents.com | organizer123 | View sales, manage events, see attendees |
+| Admin | admin@eventify.com | admin123 | Platform overview, delete users/events |
 
 ---
 
-### Part C: Add the Live Link to Your GitHub Repository
+## 11. REST API Endpoints
 
-1. Open your repository on [github.com](https://github.com).
-2. On the right sidebar, click the **⚙️ (Settings)** icon next to **"About"**.
-3. In the **Website** field, paste your Render link:
-   ```text
-   https://eventify-xxxx.onrender.com
-   ```
-4. Check the box **"Use your README's description"** or enter:  
-   *Eventify – Multi-Tenant Event & Ticket Reservation System (Web Technology Mini Project)*
-5. Click **"Save changes"**.
-6. Now your live website link is pinned prominently on your GitHub repository!
+### Authentication
+- `POST /api/auth/register` - Create new attendee or organizer account
+- `POST /api/auth/login` - Authenticate user credentials and return JWT
+- `GET /api/auth/me` - Fetch profile of currently logged-in user
 
----
+### Events
+- `GET /api/events` - Retrieve events with optional search and category query parameters
+- `GET /api/events/:id` - Fetch single event details and ticket tiers
+- `POST /api/events` - Create a new event (Organizer/Admin only)
+- `PUT /api/events/:id` - Update an existing event (Event Owner/Admin)
+- `DELETE /api/events/:id` - Remove an event from the system
 
-## 📡 REST API Documentation
+### Holds and Bookings
+- `POST /api/bookings/hold` - Create a 10-minute temporary seat reservation
+- `DELETE /api/bookings/hold/:holdToken` - Release a temporary hold
+- `POST /api/bookings/checkout` - Execute transaction and finalize booking
+- `GET /api/bookings/my` - Fetch booking history for the logged-in user
+- `DELETE /api/bookings/:id` - Cancel booking and return seats to inventory
 
-### Authentication Endpoints
-- `POST /api/auth/register` – Register new Attendee or Organizer account.
-- `POST /api/auth/login` – Authenticate with email/password and obtain JWT.
-- `GET /api/auth/me` – Fetch current logged-in profile (Requires Bearer token).
-
-### Events Endpoints
-- `GET /api/events` – Query events with optional `?search=` and `?category=`.
-- `GET /api/events/:id` – Fetch event details with ticket tiers and organizer info.
-- `POST /api/events` – Create new event with GA & VIP tiers (Organizer/Admin only).
-- `PUT /api/events/:id` – Update event and ticket prices/capacities (Organizer owner/Admin).
-- `DELETE /api/events/:id` – Delete event (Organizer owner/Admin).
-
-### Reservation & Holds Endpoints
-- `POST /api/bookings/hold` – Lock seats for 10 minutes (`{ ticket_type_id, quantity }`).
-- `DELETE /api/bookings/hold/:holdToken` – Manually release hold.
-- `POST /api/bookings/checkout` – Finalize payment & booking in INR (`{ holdToken, ticket_type_id, quantity, attendee_name, attendee_email, simulate_failure }`).
-- `GET /api/bookings/my` – Retrieve attendee's confirmed bookings.
-- `DELETE /api/bookings/:id` – Cancel booking and restore available seats.
-
-### Multi-Tenant Dashboards
-- `GET /api/organizer/stats` – Metrics, hosted events, and attendees for organizer.
-- `GET /api/admin/stats` – Platform users, events, and gross sales for admin.
-- `DELETE /api/admin/users/:id` – Remove user account.
+### Dashboards
+- `GET /api/organizer/stats` - Summary metrics and attendee lists for organizer
+- `GET /api/admin/stats` - Platform-wide user and event statistics
+- `DELETE /api/admin/users/:id` - Remove a user account (Admin only)
 
 ---
 
-## 🎓 Viva & Project Demonstration Guide
+## 12. Viva Demonstration Questions and Answers
 
-### How to Demonstrate to the Examiner:
+**Question 1: How does the system handle race conditions when two users book the last seat at the same time?**  
+Answer: We use SQLite transactions (`BEGIN TRANSACTION` and `COMMIT`). The seat reduction query uses a guard condition: `UPDATE ticket_types SET available_seats = available_seats - ? WHERE id = ? AND available_seats >= ?`. If two requests arrive at once, only the first transaction decrements the seat count. The second sees insufficient seats, updates 0 rows, and triggers a `ROLLBACK`.
 
-1. **Homepage & Event Discovery:**
-   - Show the responsive dark interface with purple gradients and Indian Rupee (₹) pricing.
-   - Type in the search bar (e.g., *"Bengaluru"*, *"Mumbai"*, or *"Tech"*) to demonstrate real-time filtering.
-   - Click category filter pills (*Tech, Music, Workshop, Sports, Comedy, Networking*).
+**Question 2: How does the 10-minute hold function without blocking other attendees indefinitely?**  
+Answer: A record is written to `ticket_holds` with a future timestamp (`Date.now() + 600000`). Available seat queries count active unexpired holds. A periodic background cleanup job and on-request checks expire holds older than 10 minutes. If an attendee leaves checkout, the seats become available again.
 
-2. **Attendee Booking Flow & 10-Minute Hold:**
-   - Click **"Sign In"** -> click the **"👤 Attendee"** 1-click pill to instantly log in as Alex Rivera.
-   - Pick an event and click **"Book Tickets"**.
-   - Select **General Admission (₹1,499)** or **VIP Access (₹4,999)**, change quantity, and observe the live subtotal.
-   - Click **"Reserve & Proceed to Payment"**:
-     - Point out the **10-minute hold countdown timer** ticking down live.
-     - Explain: *"This prevents other users from stealing the seat while we complete payment."*
-   - Select payment mode: **⚡ UPI / QR** or **💳 RuPay / Debit Card**.
-   - Click **"🔴 Simulate Payment Failure"**:
-     - Show the graceful error message without losing the hold.
-   - Click **"🟢 Pay in INR (Simulate Success)"**:
-     - Show the atomic transaction confirmation, booking reference code, and receipt.
-   - Click **"View My Bookings"** and click **"🖨️ View Digital Pass"** to show the boarding pass with mock QR code and barcode.
+**Question 3: Why was SQLite selected over MySQL or MongoDB for this project?**  
+Answer: SQLite is an embedded, serverless relational database engine. It requires zero configuration, stores the database in a single file (`eventify.db`), and supports standard SQL, ACID transactions, and foreign key constraints. This makes the project portable and easy to run on any machine without installing a standalone database server.
 
-3. **Organizer Hub & Multi-Tenancy:**
-   - Click **"Sign Out"**, then sign in with the **"📊 Organizer"** 1-click pill (Sarah Jenkins).
-   - Show that Sarah only sees her own events and attendee list, not Marcus's.
-   - Click **"➕ Create New Event"**, enter details, set GA and VIP pricing in ₹, and publish.
-   - Switch back to "Explore Events" to show the new event immediately appearing with tickets for sale.
-
-4. **Admin Panel:**
-   - Sign in with the **"⚡ Admin"** 1-click pill.
-   - Show the platform-wide metrics (Total Users, Events, Bookings, Platform Revenue in ₹).
-   - Demonstrate user governance and event audit capabilities.
-
-### Common Viva Questions & Answers:
-
-- **Q: How does the system prevent overselling tickets?**
-  *A:* We use SQLite database transactions (`BEGIN TRANSACTION ... COMMIT`). When booking, the query executes `UPDATE ticket_types SET available_seats = available_seats - ? WHERE id = ? AND available_seats >= ?`. If `available_seats` is insufficient, `changes` is 0, the server triggers a `ROLLBACK`, and no tickets are oversold.
-
-- **Q: Why use SQLite for this project?**
-  *A:* SQLite is a zero-configuration, serverless, file-based SQL database that supports standard relational tables, foreign key cascades, and ACID transactions. It requires no separate database server setup, making it reliable for demonstrations.
-
-- **Q: How are passwords secured?**
-  *A:* Passwords are never stored in plain text. We hash them using `bcryptjs` with 10 salt rounds before saving to the database, protecting user credentials.
-
-- **Q: How does the 10-minute hold work?**
-  *A:* A record is created in `ticket_holds` with a timestamp 10 minutes in the future (`Date.now() + 600000`). Available seat queries subtract active holds. A background interval cleans expired holds, and checkout converts the hold to a completed booking.
+**Question 4: How are passwords secured in the database?**  
+Answer: Passwords are never stored in plain text. We hash them using the `bcryptjs` library with a salt factor of 10 rounds before storing the string in the `password_hash` column. During authentication, `bcrypt.compareSync` verifies the entered password against the stored hash.
 
 ---
 
-## 📄 License
-This project is open-source and created for educational and college demonstration purposes under the MIT License.
+## 13. Future Enhancements
+
+- Integration with a real payment gateway (Razorpay or Stripe).
+- Automated email delivery of PDF tickets with genuine scannable QR verification.
+- Interactive seat map selection for venue hall seats.
+- Calendar export (.ics) for attendees.
