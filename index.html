@@ -1,0 +1,808 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Eventify – Multi-Tenant Event & Ticket Reservation System</title>
+  <link rel="stylesheet" href="style.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Space+Grotesk:wght@600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+
+  <!-- Floating Toast Notifications -->
+  <div id="toast-container" class="toast-container"></div>
+
+  <!-- Navigation Bar -->
+  <header class="navbar">
+    <div class="nav-container">
+      <a href="#" class="brand-logo" onclick="app.showView('explore'); return false;">
+        <span class="logo-icon">🎟️</span>
+        <span class="logo-text">Event<span class="logo-gradient">ify</span></span>
+      </a>
+
+      <nav class="nav-links">
+        <button class="nav-link active" data-view="explore" onclick="app.showView('explore')">
+          <span class="nav-icon">✨</span> Explore Events
+        </button>
+        <button class="nav-link" id="nav-bookings" data-view="bookings" onclick="app.showView('bookings')" style="display: none;">
+          <span class="nav-icon">🎫</span> My Bookings
+        </button>
+        <button class="nav-link" id="nav-organizer" data-view="organizer" onclick="app.showView('organizer')" style="display: none;">
+          <span class="nav-icon">📊</span> Organizer Hub
+        </button>
+        <button class="nav-link" id="nav-admin" data-view="admin" onclick="app.showView('admin')" style="display: none;">
+          <span class="nav-icon">⚡</span> Admin Panel
+        </button>
+      </nav>
+
+      <div class="nav-auth" id="nav-auth-container">
+        <!-- Rendered dynamically by script.js -->
+        <button class="btn btn-outline btn-sm" onclick="app.openAuthModal('login')">Sign In</button>
+        <button class="btn btn-primary btn-sm" onclick="app.openAuthModal('register')">Get Started</button>
+      </div>
+    </div>
+  </header>
+
+  <!-- VIEW: EXPLORE EVENTS (Homepage) -->
+  <main id="view-explore" class="view-section active">
+    <!-- Hero Section -->
+    <section class="hero-section">
+      <div class="hero-glow"></div>
+      <div class="hero-content">
+        <div class="hero-pill">
+          <span class="pill-dot"></span> Next-Gen Event Ticketing Platform
+        </div>
+        <h1 class="hero-title">Moments worth <br><span class="gradient-text">showing up for.</span></h1>
+        <p class="hero-subtitle">
+          Discover music festivals, tech masterclasses, sports marathons, and networking summits.
+          Reserve with fair seat holds, General & VIP tiers, and instant digital passes.
+        </p>
+
+        <!-- Search Bar -->
+        <div class="search-bar-wrapper">
+          <div class="search-input-group">
+            <span class="search-icon">🔍</span>
+            <input type="text" id="event-search-input" placeholder="Search events by title, keyword, or venue..." oninput="app.handleSearchInput(event)">
+            <button class="btn btn-clear-search" id="btn-clear-search" onclick="app.clearSearch()" style="display: none;">✕</button>
+          </div>
+          <button class="btn btn-primary search-action-btn" onclick="app.fetchEvents()">
+            Find Events
+          </button>
+        </div>
+
+        <!-- Quick Stats Pill Bar -->
+        <div class="hero-features-bar">
+          <div class="feature-item">
+            <span class="feature-icon">🛡️</span>
+            <div>
+              <strong>Multi-Tenant System</strong>
+              <small>Admin • Organizer • Attendee</small>
+            </div>
+          </div>
+          <div class="feature-item">
+            <span class="feature-icon">🎟️</span>
+            <div>
+              <strong>Dual Ticket Tiers</strong>
+              <small>General Admission & VIP</small>
+            </div>
+          </div>
+          <div class="feature-item">
+            <span class="feature-icon">⏱️</span>
+            <div>
+              <strong>10-Min Fair Hold</strong>
+              <small>Anti-Overselling Guard</small>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Categories Filter & Event Listing -->
+    <section class="events-section">
+      <div class="section-header">
+        <div>
+          <h2 class="section-title">Upcoming Live Experiences</h2>
+          <p class="section-desc">Browse real-time database entries with live available seat counts</p>
+        </div>
+
+        <!-- Category Filter Pills -->
+        <div class="category-pills" id="category-pills">
+          <button class="category-pill active" data-category="All" onclick="app.filterByCategory('All')">All Events</button>
+          <button class="category-pill" data-category="Tech" onclick="app.filterByCategory('Tech')">💻 Tech</button>
+          <button class="category-pill" data-category="Music" onclick="app.filterByCategory('Music')">🎵 Music</button>
+          <button class="category-pill" data-category="Workshop" onclick="app.filterByCategory('Workshop')">🛠️ Workshops</button>
+          <button class="category-pill" data-category="Sports" onclick="app.filterByCategory('Sports')">🏃 Sports</button>
+          <button class="category-pill" data-category="Comedy" onclick="app.filterByCategory('Comedy')">🎭 Comedy</button>
+          <button class="category-pill" data-category="Networking" onclick="app.filterByCategory('Networking')">🤝 Networking</button>
+        </div>
+      </div>
+
+      <!-- Events Grid Container -->
+      <div id="events-grid" class="events-grid">
+        <!-- Rendered via JavaScript -->
+        <div class="loading-state">
+          <div class="spinner"></div>
+          <p>Loading curated events from database...</p>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <!-- VIEW: ATTENDEE BOOKINGS -->
+  <main id="view-bookings" class="view-section" style="display: none;">
+    <section class="dashboard-container">
+      <div class="dashboard-header">
+        <div>
+          <div class="badge-role badge-attendee">Attendee Portal</div>
+          <h1 class="view-title">My Booked Tickets & Passes</h1>
+          <p class="view-subtitle">Access your active reservations, digital receipts, and booking references</p>
+        </div>
+        <button class="btn btn-outline" onclick="app.fetchMyBookings()">
+          <span>🔄</span> Refresh Bookings
+        </button>
+      </div>
+
+      <div id="my-bookings-container">
+        <!-- Rendered via JavaScript -->
+      </div>
+    </section>
+  </main>
+
+  <!-- VIEW: ORGANIZER HUB -->
+  <main id="view-organizer" class="view-section" style="display: none;">
+    <section class="dashboard-container">
+      <div class="dashboard-header">
+        <div>
+          <div class="badge-role badge-organizer">Organizer Management Portal</div>
+          <h1 class="view-title">Organizer Analytics & Event Hub</h1>
+          <p class="view-subtitle">Manage your tenant events, monitor live ticket sales, and track revenue</p>
+        </div>
+        <div class="dashboard-actions">
+          <button class="btn btn-primary" onclick="app.openCreateEventModal()">
+            <span>➕</span> Create New Event
+          </button>
+        </div>
+      </div>
+
+      <!-- Organizer Metric Cards -->
+      <div class="stats-grid" id="organizer-metrics">
+        <div class="stat-card">
+          <span class="stat-icon">📅</span>
+          <div>
+            <div class="stat-value" id="org-stat-events">0</div>
+            <div class="stat-label">Active Events</div>
+          </div>
+        </div>
+        <div class="stat-card">
+          <span class="stat-icon">🎟️</span>
+          <div>
+            <div class="stat-value" id="org-stat-tickets">0</div>
+            <div class="stat-label">Tickets Sold</div>
+          </div>
+        </div>
+        <div class="stat-card">
+          <span class="stat-icon">📑</span>
+          <div>
+            <div class="stat-value" id="org-stat-bookings">0</div>
+            <div class="stat-label">Total Reservations</div>
+          </div>
+        </div>
+        <div class="stat-card stat-card-highlight">
+          <span class="stat-icon">💰</span>
+          <div>
+            <div class="stat-value" id="org-stat-revenue">₹0.00</div>
+            <div class="stat-label">Gross Revenue</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Organizer Events Table / Cards -->
+      <div class="content-box">
+        <div class="content-box-header">
+          <h3 class="content-box-title">Your Hosted Events</h3>
+        </div>
+        <div class="table-responsive">
+          <table class="data-table" id="organizer-events-table">
+            <thead>
+              <tr>
+                <th>Event</th>
+                <th>Category</th>
+                <th>Date & Venue</th>
+                <th>GA Remaining</th>
+                <th>VIP Remaining</th>
+                <th>Revenue</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody id="organizer-events-tbody">
+              <!-- Rendered via JS -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Recent Attendees Breakdown -->
+      <div class="content-box mt-4">
+        <div class="content-box-header">
+          <h3 class="content-box-title">Recent Attendee Bookings</h3>
+        </div>
+        <div class="table-responsive">
+          <table class="data-table" id="organizer-attendees-table">
+            <thead>
+              <tr>
+                <th>Booking Code</th>
+                <th>Attendee</th>
+                <th>Event</th>
+                <th>Tier</th>
+                <th>Qty</th>
+                <th>Amount</th>
+                <th>Booked On</th>
+              </tr>
+            </thead>
+            <tbody id="organizer-attendees-tbody">
+              <!-- Rendered via JS -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <!-- VIEW: ADMIN DASHBOARD -->
+  <main id="view-admin" class="view-section" style="display: none;">
+    <section class="dashboard-container">
+      <div class="dashboard-header">
+        <div>
+          <div class="badge-role badge-admin">Master Administrator</div>
+          <h1 class="view-title">Platform Administration Panel</h1>
+          <p class="view-subtitle">System-wide monitoring, user governance, and multi-tenant oversight</p>
+        </div>
+        <button class="btn btn-outline" onclick="app.fetchAdminDashboard()">
+          <span>🔄</span> Refresh Platform Stats
+        </button>
+      </div>
+
+      <!-- Platform Stat Metrics -->
+      <div class="stats-grid" id="admin-metrics">
+        <div class="stat-card">
+          <span class="stat-icon">👥</span>
+          <div>
+            <div class="stat-value" id="admin-stat-users">0</div>
+            <div class="stat-label">Total Users</div>
+          </div>
+        </div>
+        <div class="stat-card">
+          <span class="stat-icon">🎪</span>
+          <div>
+            <div class="stat-value" id="admin-stat-events">0</div>
+            <div class="stat-label">Platform Events</div>
+          </div>
+        </div>
+        <div class="stat-card">
+          <span class="stat-icon">🎫</span>
+          <div>
+            <div class="stat-value" id="admin-stat-tickets">0</div>
+            <div class="stat-label">Tickets Reserved</div>
+          </div>
+        </div>
+        <div class="stat-card stat-card-highlight">
+          <span class="stat-icon">💎</span>
+          <div>
+            <div class="stat-value" id="admin-stat-revenue">₹0.00</div>
+            <div class="stat-label">Platform Gross Sales</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Users Management Table -->
+      <div class="content-box">
+        <div class="content-box-header">
+          <h3 class="content-box-title">Registered System Users</h3>
+        </div>
+        <div class="table-responsive">
+          <table class="data-table" id="admin-users-table">
+            <thead>
+              <tr>
+                <th>ID</th>
+                <th>Name</th>
+                <th>Email</th>
+                <th>Role</th>
+                <th>Joined Date</th>
+                <th>Action</th>
+              </tr>
+            </thead>
+            <tbody id="admin-users-tbody">
+              <!-- Rendered via JS -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Platform Events Management Table -->
+      <div class="content-box mt-4">
+        <div class="content-box-header">
+          <h3 class="content-box-title">All Platform Events</h3>
+        </div>
+        <div class="table-responsive">
+          <table class="data-table" id="admin-events-table">
+            <thead>
+              <tr>
+                <th>ID</th>
+                <th>Title</th>
+                <th>Organizer</th>
+                <th>Category</th>
+                <th>Date</th>
+                <th>Sales Revenue</th>
+                <th>Action</th>
+              </tr>
+            </thead>
+            <tbody id="admin-events-tbody">
+              <!-- Rendered via JS -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <!-- ======================================================== -->
+  <!-- MODALS -->
+  <!-- ======================================================== -->
+
+  <!-- AUTH MODAL (Login / Register & 1-Click Demo Login) -->
+  <div id="modal-auth" class="modal-overlay">
+    <div class="modal-card modal-auth-card">
+      <button class="modal-close-btn" onclick="app.closeModals()">✕</button>
+
+      <div class="auth-tabs">
+        <button class="auth-tab active" id="tab-login" onclick="app.switchAuthTab('login')">Sign In</button>
+        <button class="auth-tab" id="tab-register" onclick="app.switchAuthTab('register')">Register Account</button>
+      </div>
+
+      <!-- Quick 1-Click Demo Credentials Pill (Ideal for College Presentation) -->
+      <div class="demo-login-box">
+        <div class="demo-login-title">⚡ Instant Demo Sign-In (For Project Evaluation):</div>
+        <div class="demo-login-buttons">
+          <button type="button" class="btn-demo-pill" onclick="app.quickLogin('alex.attendee@gmail.com', 'attendee123')">
+            👤 Attendee
+          </button>
+          <button type="button" class="btn-demo-pill" onclick="app.quickLogin('sarah@nexusevents.com', 'organizer123')">
+            📊 Organizer
+          </button>
+          <button type="button" class="btn-demo-pill" onclick="app.quickLogin('admin@eventify.com', 'admin123')">
+            ⚡ Admin
+          </button>
+        </div>
+      </div>
+
+      <!-- Login Form -->
+      <form id="form-login" onsubmit="app.handleLogin(event)" class="auth-form">
+        <div class="form-group">
+          <label class="form-label" for="login-email">Email Address</label>
+          <input type="email" id="login-email" class="form-input" placeholder="name@example.com" required>
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="login-password">Password</label>
+          <input type="password" id="login-password" class="form-input" placeholder="••••••••" required>
+        </div>
+        <button type="submit" class="btn btn-primary btn-block" id="btn-login-submit">
+          Sign In to Eventify
+        </button>
+      </form>
+
+      <!-- Register Form -->
+      <form id="form-register" onsubmit="app.handleRegister(event)" class="auth-form" style="display: none;">
+        <div class="form-group">
+          <label class="form-label" for="reg-name">Full Name or Organization</label>
+          <input type="text" id="reg-name" class="form-input" placeholder="e.g. Alex Rivera" required>
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="reg-email">Email Address</label>
+          <input type="email" id="reg-email" class="form-input" placeholder="name@example.com" required>
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="reg-password">Password (min 6 chars)</label>
+          <input type="password" id="reg-password" class="form-input" placeholder="••••••••" minlength="6" required>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Account Role</label>
+          <div class="role-selector">
+            <label class="role-radio-label">
+              <input type="radio" name="reg-role" value="attendee" checked>
+              <span class="role-radio-card">
+                <strong>Attendee</strong>
+                <small>Browse & book events</small>
+              </span>
+            </label>
+            <label class="role-radio-label">
+              <input type="radio" name="reg-role" value="organizer">
+              <span class="role-radio-card">
+                <strong>Organizer</strong>
+                <small>Create & manage events</small>
+              </span>
+            </label>
+          </div>
+        </div>
+        <button type="submit" class="btn btn-primary btn-block" id="btn-register-submit">
+          Create Account
+        </button>
+      </form>
+    </div>
+  </div>
+
+  <!-- BOOKING & CHECKOUT MODAL -->
+  <div id="modal-booking" class="modal-overlay">
+    <div class="modal-card modal-booking-card">
+      <button class="modal-close-btn" onclick="app.closeBookingModal()">✕</button>
+
+      <!-- Step 1: Ticket Selection -->
+      <div id="booking-step-select" class="booking-step active">
+        <div class="modal-header">
+          <h2 class="modal-title" id="book-modal-title">Select Tickets</h2>
+          <p class="modal-subtitle" id="book-modal-subtitle">Choose your preferred tier and quantity</p>
+        </div>
+
+        <div class="ticket-selection-tiers" id="booking-tier-options">
+          <!-- Rendered via JS -->
+        </div>
+
+        <div class="quantity-selector-box">
+          <label class="form-label">Number of Tickets</label>
+          <div class="qty-stepper">
+            <button type="button" class="btn-qty" onclick="app.changeBookingQty(-1)">−</button>
+            <span id="booking-qty-display" class="qty-number">1</span>
+            <button type="button" class="btn-qty" onclick="app.changeBookingQty(1)">+</button>
+          </div>
+          <small class="text-muted">Maximum 10 tickets per order</small>
+        </div>
+
+        <div class="order-summary-box">
+          <div class="summary-row">
+            <span>Ticket Tier:</span>
+            <strong id="summary-tier-name">General Admission</strong>
+          </div>
+          <div class="summary-row">
+            <span>Unit Price:</span>
+            <span id="summary-unit-price">₹0.00</span>
+          </div>
+          <div class="summary-row summary-total">
+            <span>Total Payable:</span>
+            <span id="summary-total-price">₹0.00</span>
+          </div>
+        </div>
+
+        <div class="modal-actions">
+          <button type="button" class="btn btn-outline" onclick="app.closeBookingModal()">Cancel</button>
+          <button type="button" class="btn btn-primary" id="btn-proceed-hold" onclick="app.proceedToHold()">
+            Reserve & Proceed to Payment ➔
+          </button>
+        </div>
+      </div>
+
+      <!-- Step 2: 10-Minute Hold & Mock Payment Simulation -->
+      <div id="booking-step-checkout" class="booking-step" style="display: none;">
+        <div class="modal-header">
+          <h2 class="modal-title">Checkout & Payment Simulation</h2>
+          <!-- 10-Minute Fair Hold Countdown -->
+          <div class="hold-timer-alert" id="hold-timer-container">
+            <span class="timer-icon">⏱️</span>
+            <div>
+              <strong>Fair Seat Hold Active:</strong>
+              <span>You have <span id="hold-countdown" class="hold-time-text">10:00</span> minutes to complete payment.</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="order-review-card">
+          <div class="review-item">
+            <span class="text-muted">Event:</span>
+            <strong id="checkout-event-title">-</strong>
+          </div>
+          <div class="review-item">
+            <span class="text-muted">Tier & Qty:</span>
+            <span id="checkout-tier-qty">-</span>
+          </div>
+          <div class="review-item">
+            <span class="text-muted">Total Due:</span>
+            <strong class="highlight-price" id="checkout-total-amount">₹0.00</strong>
+          </div>
+        </div>
+
+        <!-- Attendee Information Fields -->
+        <div class="form-group mt-3">
+          <label class="form-label" for="checkout-attendee-name">Primary Attendee Name</label>
+          <input type="text" id="checkout-attendee-name" class="form-input" required>
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="checkout-attendee-email">Ticket Delivery Email</label>
+          <input type="email" id="checkout-attendee-email" class="form-input" required>
+        </div>
+
+        <!-- Simulated Indian Payment Gateway (UPI & RuPay Cards) -->
+        <div class="mock-card-section">
+          <div class="mock-card-header">
+            <span>🇮🇳 Indian Payment Gateway (INR ₹)</span>
+            <span class="test-badge">SANDBOX TEST MODE</span>
+          </div>
+          
+          <!-- Payment Method Options -->
+          <div style="display: flex; gap: 0.5rem; margin-bottom: 0.85rem;">
+            <button type="button" class="btn-demo-pill" id="tab-pay-upi" onclick="app.switchPaymentMethod('upi')" style="border-color: var(--accent-purple); background: rgba(139, 92, 246, 0.2);">
+              ⚡ UPI / QR
+            </button>
+            <button type="button" class="btn-demo-pill" id="tab-pay-card" onclick="app.switchPaymentMethod('card')">
+              💳 RuPay / Debit Card
+            </button>
+          </div>
+
+          <div id="pay-method-upi">
+            <div class="form-group">
+              <label class="form-label">Simulated UPI ID (GPay / PhonePe / Paytm)</label>
+              <input type="text" class="form-input" id="checkout-upi-id" value="alex.rivera@okhdfcbank" placeholder="yourname@upi">
+            </div>
+          </div>
+
+          <div id="pay-method-card" style="display: none;">
+            <div class="form-group">
+              <label class="form-label">RuPay / Visa Card Number (Simulated)</label>
+              <input type="text" class="form-input" value="6071 •••• •••• 8821" readonly>
+            </div>
+            <div class="form-row-2">
+              <div class="form-group">
+                <label class="form-label">Expiry</label>
+                <input type="text" class="form-input" value="08/29" readonly>
+              </div>
+              <div class="form-group">
+                <label class="form-label">CVV</label>
+                <input type="text" class="form-input" value="512" readonly>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Mock Payment Testing Buttons (Requirement 9: Simulate Success vs Failure) -->
+        <div class="payment-action-buttons">
+          <button type="button" class="btn btn-payment-success" id="btn-pay-success" onclick="app.executePayment(false)">
+            <span>🟢</span> Pay in INR (Simulate Success)
+          </button>
+          <button type="button" class="btn btn-payment-fail" id="btn-pay-fail" onclick="app.executePayment(true)">
+            <span>🔴</span> Simulate Payment Failure
+          </button>
+        </div>
+
+        <div class="text-center mt-2">
+          <button type="button" class="btn-text-link" onclick="app.cancelSeatHold()">
+            Release Hold & Go Back
+          </button>
+        </div>
+      </div>
+
+      <!-- Step 3: Success Confirmation -->
+      <div id="booking-step-success" class="booking-step" style="display: none;">
+        <div class="success-icon-badge">✓</div>
+        <h2 class="modal-title text-center">Reservation Confirmed!</h2>
+        <p class="modal-subtitle text-center">Your tickets have been issued and seats secured.</p>
+
+        <div class="confirmation-receipt" id="confirmation-receipt-content">
+          <!-- Rendered via JS -->
+        </div>
+
+        <div class="modal-actions">
+          <button type="button" class="btn btn-outline" onclick="app.closeBookingModal(); app.showView('bookings');">
+            View My Bookings
+          </button>
+          <button type="button" class="btn btn-primary" onclick="app.printCurrentPass()">
+            🖨️ Print Digital Pass
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- DIGITAL TICKET PASS MODAL -->
+  <div id="modal-ticket-pass" class="modal-overlay">
+    <div class="modal-card modal-ticket-pass-card">
+      <button class="modal-close-btn" onclick="app.closeModals()">✕</button>
+
+      <div class="ticket-pass-wrapper" id="printable-ticket">
+        <div class="pass-stub pass-left">
+          <div class="pass-brand">
+            <span>🎟️ Eventify Pass</span>
+            <span class="pass-code-pill" id="pass-booking-code">EVT-000000</span>
+          </div>
+          <h2 class="pass-event-title" id="pass-event-title">Event Title</h2>
+          <div class="pass-details-grid">
+            <div>
+              <span class="pass-lbl">DATE & TIME</span>
+              <strong id="pass-event-datetime">Nov 14, 2026 • 09:00 AM</strong>
+            </div>
+            <div>
+              <span class="pass-lbl">VENUE</span>
+              <strong id="pass-event-venue">Metropolis Convention Center</strong>
+            </div>
+            <div>
+              <span class="pass-lbl">TIER / SEATS</span>
+              <strong id="pass-ticket-tier" class="highlight-pass-tier">VIP Access (x2)</strong>
+            </div>
+            <div>
+              <span class="pass-lbl">HOLDER</span>
+              <strong id="pass-attendee-name">Alex Rivera</strong>
+            </div>
+          </div>
+        </div>
+
+        <div class="pass-stub pass-right">
+          <div class="qr-mock-box">
+            <!-- SVG Mock QR Code -->
+            <svg class="mock-qr-svg" viewBox="0 0 100 100">
+              <rect x="0" y="0" width="30" height="30" fill="currentColor" />
+              <rect x="5" y="5" width="20" height="20" fill="#121526" />
+              <rect x="10" y="10" width="10" height="10" fill="currentColor" />
+              <rect x="70" y="0" width="30" height="30" fill="currentColor" />
+              <rect x="75" y="5" width="20" height="20" fill="#121526" />
+              <rect x="80" y="10" width="10" height="10" fill="currentColor" />
+              <rect x="0" y="70" width="30" height="30" fill="currentColor" />
+              <rect x="5" y="75" width="20" height="20" fill="#121526" />
+              <rect x="10" y="80" width="10" height="10" fill="currentColor" />
+              <rect x="40" y="10" width="15" height="15" fill="currentColor" />
+              <rect x="45" y="45" width="25" height="25" fill="currentColor" />
+              <rect x="75" y="75" width="20" height="20" fill="currentColor" />
+            </svg>
+            <span class="qr-code-text">VALID DIGITAL PASS</span>
+          </div>
+          <div class="barcode-mock">
+            <span>||||| ||| ||||||| || ||||||</span>
+            <small id="pass-payment-ref">PAY-MOCK-991204</small>
+          </div>
+        </div>
+      </div>
+
+      <div class="modal-actions mt-3">
+        <button type="button" class="btn btn-outline" onclick="app.closeModals()">Close</button>
+        <button type="button" class="btn btn-primary" onclick="window.print()">
+          🖨️ Print Ticket
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- CREATE / EDIT EVENT MODAL (Organizer & Admin) -->
+  <div id="modal-event-form" class="modal-overlay">
+    <div class="modal-card modal-form-card">
+      <button class="modal-close-btn" onclick="app.closeModals()">✕</button>
+
+      <div class="modal-header">
+        <h2 class="modal-title" id="event-form-title">Create New Event</h2>
+        <p class="modal-subtitle">Publish event tickets across General Admission and VIP tiers</p>
+      </div>
+
+      <form id="form-event" onsubmit="app.handleSaveEvent(event)">
+        <input type="hidden" id="event-form-id">
+
+        <div class="form-group">
+          <label class="form-label" for="evt-title">Event Title *</label>
+          <input type="text" id="evt-title" class="form-input" placeholder="e.g. NextGen Web & AI Hackathon" required>
+        </div>
+
+        <div class="form-row-2">
+          <div class="form-group">
+            <label class="form-label" for="evt-category">Category *</label>
+            <select id="evt-category" class="form-input" required>
+              <option value="Tech">Tech</option>
+              <option value="Music">Music</option>
+              <option value="Workshop">Workshop</option>
+              <option value="Sports">Sports</option>
+              <option value="Comedy">Comedy</option>
+              <option value="Networking">Networking</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="evt-date">Event Date *</label>
+            <input type="date" id="evt-date" class="form-input" required>
+          </div>
+        </div>
+
+        <div class="form-row-2">
+          <div class="form-group">
+            <label class="form-label" for="evt-time">Start Time *</label>
+            <input type="text" id="evt-time" class="form-input" placeholder="e.g. 06:30 PM" required>
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="evt-venue">Venue & Location *</label>
+            <input type="text" id="evt-venue" class="form-input" placeholder="e.g. Symphony Hall, Austin TX" required>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="evt-image">Cover Image URL</label>
+          <input type="url" id="evt-image" class="form-input" placeholder="https://images.unsplash.com/...">
+          <small class="text-muted">Leave blank for automatic curated cover</small>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="evt-desc">Event Description *</label>
+          <textarea id="evt-desc" class="form-input form-textarea" rows="3" placeholder="Describe the experience, schedule, and guest speakers..." required></textarea>
+        </div>
+
+        <!-- Ticket Tiers Configuration -->
+        <div class="tiers-config-box">
+          <h4 class="tiers-config-title">🎟️ Ticket Tiers Configuration</h4>
+
+          <div class="form-row-2">
+            <div class="tier-col">
+              <h5>General Admission (GA)</h5>
+              <div class="form-group">
+                <label class="form-label">Price (₹)</label>
+                <input type="number" id="evt-ga-price" class="form-input" min="0" step="1" value="499.00" required>
+              </div>
+              <div class="form-group">
+                <label class="form-label">Total Seats</label>
+                <input type="number" id="evt-ga-seats" class="form-input" min="1" step="1" value="100" required>
+              </div>
+            </div>
+
+            <div class="tier-col tier-col-vip">
+              <h5>VIP Access Tier</h5>
+              <div class="form-group">
+                <label class="form-label">Price (₹)</label>
+                <input type="number" id="evt-vip-price" class="form-input" min="0" step="1" value="1499.00" required>
+              </div>
+              <div class="form-group">
+                <label class="form-label">Total Seats</label>
+                <input type="number" id="evt-vip-seats" class="form-input" min="1" step="1" value="25" required>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="modal-actions mt-3">
+          <button type="button" class="btn btn-outline" onclick="app.closeModals()">Cancel</button>
+          <button type="submit" class="btn btn-primary" id="btn-save-event">
+            Publish Event
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Footer -->
+  <footer class="footer">
+    <div class="footer-container">
+      <div class="footer-col">
+        <div class="brand-logo footer-logo">
+          <span class="logo-icon">🎟️</span>
+          <span class="logo-text">Event<span class="logo-gradient">ify</span></span>
+        </div>
+        <p class="footer-tagline">
+          Multi-Tenant Event & Ticket Reservation System built with Node.js, Express, SQLite3, and Vanilla Web Technologies.
+        </p>
+      </div>
+
+      <div class="footer-col">
+        <h4 class="footer-title">Roles Supported</h4>
+        <ul class="footer-links">
+          <li><span>👤 Attendee:</span> Browse, hold seats, mock pay, download passes</li>
+          <li><span>📊 Organizer:</span> Create events, monitor sales & gross revenue</li>
+          <li><span>⚡ Admin:</span> Platform oversight, user governance, audit events</li>
+        </ul>
+      </div>
+
+      <div class="footer-col">
+        <h4 class="footer-title">Core Engineering</h4>
+        <ul class="footer-links">
+          <li><span>🛡️ Security:</span> Parameterized SQL & bcryptjs</li>
+          <li><span>⏱️ Fair Hold:</span> 10-minute reservation lock</li>
+          <li><span>⚡ Atomic:</span> SQLite transactions prevent overselling</li>
+        </ul>
+      </div>
+    </div>
+    <div class="footer-bottom">
+      <p>© 2026 Eventify – College Web Technology Mini Project. Designed for academic demonstration.</p>
+    </div>
+  </footer>
+
+  <script src="script.js"></script>
+</body>
+</html>
